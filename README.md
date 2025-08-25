@@ -1,10 +1,10 @@
 # Optimizer Comparison for CNN Training
 
-This repository contains a PyTorch implementation for comparing three optimization algorithms (SGD with Momentum, Adam, and a custom Perturbed Saddle-escape Descent) on MNIST and CIFAR-10 datasets.
+This repository contains a PyTorch implementation for comparing three optimization algorithms (SGD with Momentum, Adam, and the Perturbed Saddle Descent optimizer from the [psd-optimizer](https://pypi.org/project/psd-optimizer/) library) on MNIST and CIFAR-10 datasets.
 
 ## Features
 
-- Implementation of custom Perturbed Saddle-escape Descent (PSD) optimizer
+- Integration of the [psd-optimizer](https://pypi.org/project/psd-optimizer/) library
 - Training and evaluation of CNN on MNIST and CIFAR-10 datasets
 - Comprehensive comparison of optimization algorithms
 - Visualization of training dynamics and performance metrics
@@ -16,6 +16,7 @@ This repository contains a PyTorch implementation for comparing three optimizati
 - torchvision
 - matplotlib
 - numpy
+- psd-optimizer
 
 ## Installation
 
@@ -25,12 +26,12 @@ cd Optimizer-Comparison-CNN
 pip install -r requirements.txt
 ```
 
-Usage
+## Usage
 
 Run the main experiment script:
 
 ```bash
-python optimizer_comparison.py
+python main.py
 ```
 
 This will:
@@ -40,7 +41,7 @@ This will:
 3. Generate comparison plots of training metrics
 4. Save results to optimizer_comparison.png
 
-Results
+## Results
 
 The script generates comparative plots showing:
 
@@ -48,22 +49,20 @@ The script generates comparative plots showing:
 · Validation loss over epochs
 · Validation accuracy over epochs
 
-Custom PSD Optimizer
+## PSD Optimizer
 
-The implementation includes a custom Perturbed Saddle-escape Descent optimizer based on:
+This project uses the `psd-optimizer` package, which implements the Perturbed Saddle Descent (PSD) algorithm. The algorithm is described in:
 
-· "How to Escape Saddle Points Efficiently" by Alpay & Alakkad 2025
-· GitHub: https://github.com/farukalpay/PSD
+- Jin et al., 2017, "How to Escape Saddle Points Efficiently"
+- GitHub: https://github.com/farukalpay/PSD
 
-License
+## License
 
 MIT License - see LICENSE file for details
 
-```
-
 ## Key Files
 
-- `optimizer_comparison.py` - Main experiment script
+- `main.py` - Main experiment script
 - `requirements.txt` - Python dependencies
 - `README.md` - This file
 
