@@ -214,14 +214,14 @@ def evaluate(
     return avg_loss, accuracy
 
 # Visualization Function
-def plot_results(results, datasets, optimizers):
-    """
-    Plot training loss, validation loss, and validation accuracy for all experiments.
-    
+def plot_results(results, datasets, optimizers, show: bool = False):
+    """Plot training and validation metrics.
+
     Args:
         results: Dictionary containing results for all experiments
         datasets: List of dataset names
         optimizers: List of optimizer names
+        show: Whether to display the plot using ``plt.show``.
     """
     fig, axes = plt.subplots(len(datasets), 3, figsize=(15, 5 * len(datasets)))
     
@@ -277,7 +277,10 @@ def plot_results(results, datasets, optimizers):
     
     plt.tight_layout()
     plt.savefig('optimizer_comparison.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 def main() -> None:  # pragma: no cover
     """Run the full training experiment."""
@@ -371,7 +374,7 @@ def main() -> None:  # pragma: no cover
             }
 
     # Plot results
-    plot_results(results, CONFIG.DATASETS, CONFIG.OPTIMIZERS)
+    plot_results(results, CONFIG.DATASETS, CONFIG.OPTIMIZERS, show=True)
 
     # Print summary table
     print("\n===== SUMMARY =====")
