@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import time
 from typing import Dict, List, Tuple, Optional
 import argparse
+from psd_optimizer import PSDOptimizer
 
 # Set random seeds for reproducibility
 torch.manual_seed(42)
@@ -30,6 +31,7 @@ class CONFIG:
     MOMENTUM_SGD = 0.9
     PSD_GRAD_THRESHOLD = 1e-3  # Threshold for gradient norm to trigger perturbation
     PSD_PERTURBATION_RADIUS = 1e-4  # Radius of the perturbation noise
+    PSD_T = 10  # Number of steps after perturbation
     DATA_DIR = "./data"
 
 # Data Loading Function
@@ -138,76 +140,6 @@ class SimpleCNN(nn.Module):
         return x
 
 # Custom PSD Optimizer
-class PerturbedSaddleDescent(optim.Optimizer):
-    """
-    Implementation of Perturbed Saddle-escape Descent (PSD) optimizer.
-    
-    Based on:
-    - "How to Escape Saddle Points Efficiently" by Jin et al., 2017
-    - GitHub: https://github.com/farukalpay/PSD/
-    
-    The algorithm adds random perturbation when gradient norm falls below a threshold,
-    helping escape saddle points in non-convex optimization.
-    """
-    
-    def __init__(self, params, lr: float, grad_threshold: float, perturbation_radius: float):
-        defaults = dict(lr=lr, grad_threshold=grad_threshold, perturbation_radius=perturbation_radius)
-        super(PerturbedSaddleDescent, self).__init__(params, defaults)
-        self._step_count = 0
-    
-    def step(self, closure=None):
-        """
-        Performs a single optimization step.
-        
-        Args:
-            closure: A closure that reevaluates the model and returns the loss (optional)
-            
-        Returns:
-            Loss if closure is provided, otherwise None
-        """
-        loss = None
-        if closure is not None:
-            loss = closure()
-        
-        # Calculate total gradient norm
-        grad_norm_sq = 0.0
-        for group in self.param_groups:
-            for p in group['params']:
-                if p.grad is not None:
-                    grad_norm_sq += p.grad.data.norm(2).item() ** 2
-        
-        grad_norm = grad_norm_sq ** 0.5
-        self._step_count += 1
-        
-        # Check if we need to perturb
-        if grad_norm < self.defaults['grad_threshold']:
-            print(f"--- PSD: Perturbation triggered at step {self._step_count}! Grad norm: {grad_norm:.6f} ---")
-            
-            for group in self.param_groups:
-                for p in group['params']:
-                    if p.grad is not None:
-                        # Generate random perturbation
-                        xi = torch.randn_like(p.data)
-                        xi_norm = xi.norm(2)
-                        
-                        # Avoid division by zero
-                        if xi_norm > 0:
-                            xi = xi / xi_norm * group['perturbation_radius']
-                        else:
-                            xi = torch.zeros_like(p.data)
-                        
-                        # Add perturbation to parameters
-                        p.data.add_(xi)
-        
-        # Perform standard gradient descent
-        for group in self.param_groups:
-            lr = group['lr']
-            for p in group['params']:
-                if p.grad is not None:
-                    p.data.add_(p.grad.data, alpha=-lr)
-        
-        return loss
-
 # Training and Evaluation Functions
 def train_one_epoch(model, dataloader, optimizer, criterion, device):
     """
@@ -386,11 +318,12 @@ if __name__ == "__main__":
                     lr=CONFIG.LEARNING_RATE_ADAM
                 )
             elif optimizer_name == "PSD":
-                optimizer = PerturbedSaddleDescent(
+                optimizer = PSDOptimizer(
                     model.parameters(),
                     lr=CONFIG.LEARNING_RATE_PSD,
-                    grad_threshold=CONFIG.PSD_GRAD_THRESHOLD,
-                    perturbation_radius=CONFIG.PSD_PERTURBATION_RADIUS
+                    epsilon=CONFIG.PSD_GRAD_THRESHOLD,
+                    r=CONFIG.PSD_PERTURBATION_RADIUS,
+                    T=CONFIG.PSD_T,
                 )
             
             # Initialize lists to track metrics
