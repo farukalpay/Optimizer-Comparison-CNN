@@ -7,8 +7,7 @@ import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from typing import Dict, List, Tuple, Optional
-import argparse
+from typing import Any, Dict, List, Tuple
 from psd_optimizer import PSDOptimizer
 
 # Set random seeds for reproducibility
@@ -35,7 +34,13 @@ class CONFIG:
     DATA_DIR = "./data"
 
 # Data Loading Function
-def get_dataloaders(dataset_name: str, batch_size: int) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+def get_dataloaders(
+    dataset_name: str, batch_size: int
+) -> Tuple[
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+]:
     """
     Prepare and load datasets with appropriate transforms and splits.
     
@@ -44,7 +49,7 @@ def get_dataloaders(dataset_name: str, batch_size: int) -> Tuple[torch.utils.dat
         batch_size: Batch size for data loaders
         
     Returns:
-        Tuple of (train_loader, validation_loader)
+        Tuple of (train_loader, validation_loader, test_loader)
     """
     if dataset_name == "MNIST":
         transform = transforms.Compose([
@@ -141,78 +146,71 @@ class SimpleCNN(nn.Module):
 
 # Custom PSD Optimizer
 # Training and Evaluation Functions
-def train_one_epoch(model, dataloader, optimizer, criterion, device):
-    """
-    Train the model for one epoch.
-    
-    Args:
-        model: The neural network model
-        dataloader: DataLoader for training data
-        optimizer: Optimization algorithm
-        criterion: Loss function
-        device: Device to run training on
-        
-    Returns:
-        Average training loss for the epoch
-    """
+
+def train_one_epoch(
+    model: nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    optimizer: optim.Optimizer,
+    criterion: nn.Module,
+    device: torch.device,
+) -> float:
+    """Train the model for one epoch."""
     model.train()
     running_loss = 0.0
     total_samples = 0
-    
-    for batch_idx, (inputs, targets) in enumerate(dataloader):
+
+    for inputs, targets in dataloader:
         inputs, targets = inputs.to(device), targets.to(device)
-        
+
         # Zero the parameter gradients
         optimizer.zero_grad()
-        
+
         # Forward pass
         outputs = model(inputs)
         loss = criterion(outputs, targets)
-        
+
         # Backward pass and optimize
         loss.backward()
         optimizer.step()
-        
+
         # Statistics
         running_loss += loss.item() * inputs.size(0)
         total_samples += inputs.size(0)
-    
+
     epoch_loss = running_loss / total_samples
     return epoch_loss
 
-def evaluate(model, dataloader, criterion, device):
-    """
-    Evaluate the model on validation/test data.
-    
-    Args:
-        model: The neural network model
-        dataloader: DataLoader for validation/test data
-        criterion: Loss function
-        device: Device to run evaluation on
-        
-    Returns:
-        Tuple of (average loss, accuracy)
-    """
+
+def evaluate(
+    model: nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
+) -> Tuple[float, float]:
+    """Evaluate the model on validation/test data."""
+    if len(dataloader) == 0:
+        raise ValueError("dataloader is empty")
+
     model.eval()
     running_loss = 0.0
     correct = 0
     total_samples = 0
-    
+
     with torch.no_grad():
         for inputs, targets in dataloader:
             inputs, targets = inputs.to(device), targets.to(device)
-            
+
             outputs = model(inputs)
             loss = criterion(outputs, targets)
-            
+
             running_loss += loss.item() * inputs.size(0)
             _, predicted = outputs.max(1)
             correct += predicted.eq(targets).sum().item()
             total_samples += inputs.size(0)
-    
+
     avg_loss = running_loss / total_samples
     accuracy = 100.0 * correct / total_samples
-    
+
     return avg_loss, accuracy
 
 # Visualization Function
@@ -281,11 +279,11 @@ def plot_results(results, datasets, optimizers):
     plt.savefig('optimizer_comparison.png', dpi=300, bbox_inches='tight')
     plt.show()
 
-# Main Experiment
-if __name__ == "__main__":
+def main() -> None:  # pragma: no cover
+    """Run the full training experiment."""
     # Initialize results dictionary
-    results = {}
-    
+    results: Dict[str, Dict[str, Any]] = {}
+
     # Run experiments for each dataset and optimizer
     for dataset_name in CONFIG.DATASETS:
         # Get dataset properties
@@ -295,27 +293,28 @@ if __name__ == "__main__":
         else:  # CIFAR10
             num_classes = 10
             input_channels = 3
-        
+
         # Get data loaders
         train_loader, val_loader, test_loader = get_dataloaders(dataset_name, CONFIG.BATCH_SIZE)
-        
+
         for optimizer_name in CONFIG.OPTIMIZERS:
             print(f"\n===== Training {optimizer_name} on {dataset_name} =====")
-            
+
             # Initialize model, optimizer, and criterion
             model = SimpleCNN(num_classes, input_channels).to(CONFIG.DEVICE)
             criterion = nn.CrossEntropyLoss()
-            
+
+            optimizer: optim.Optimizer
             if optimizer_name == "SGD":
                 optimizer = optim.SGD(
-                    model.parameters(), 
-                    lr=CONFIG.LEARNING_RATE_SGD, 
-                    momentum=CONFIG.MOMENTUM_SGD
+                    model.parameters(),
+                    lr=CONFIG.LEARNING_RATE_SGD,
+                    momentum=CONFIG.MOMENTUM_SGD,
                 )
             elif optimizer_name == "Adam":
                 optimizer = optim.Adam(
-                    model.parameters(), 
-                    lr=CONFIG.LEARNING_RATE_ADAM
+                    model.parameters(),
+                    lr=CONFIG.LEARNING_RATE_ADAM,
                 )
             elif optimizer_name == "PSD":
                 optimizer = PSDOptimizer(
@@ -325,61 +324,67 @@ if __name__ == "__main__":
                     r=CONFIG.PSD_PERTURBATION_RADIUS,
                     T=CONFIG.PSD_T,
                 )
-            
+
             # Initialize lists to track metrics
-            train_losses = []
-            val_losses = []
-            val_accs = []
-            
+            train_losses: List[float] = []
+            val_losses: List[float] = []
+            val_accs: List[float] = []
+
             # Training loop
             start_time = time.time()
-            
+
             for epoch in range(CONFIG.NUM_EPOCHS):
                 # Train for one epoch
                 train_loss = train_one_epoch(model, train_loader, optimizer, criterion, CONFIG.DEVICE)
-                
+
                 # Evaluate on validation set
                 val_loss, val_acc = evaluate(model, val_loader, criterion, CONFIG.DEVICE)
-                
+
                 # Record metrics
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 val_accs.append(val_acc)
-                
+
                 # Print progress
                 if (epoch + 1) % 5 == 0 or epoch == 0:
-                    print(f"Epoch [{epoch+1}/{CONFIG.NUM_EPOCHS}], "
-                          f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
-            
+                    print(
+                        f"Epoch [{epoch+1}/{CONFIG.NUM_EPOCHS}], "
+                        f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%",
+                    )
+
             training_time = time.time() - start_time
             print(f"Training completed in {training_time:.2f} seconds")
-            
+
             # Evaluate on test set
             test_loss, test_acc = evaluate(model, test_loader, criterion, CONFIG.DEVICE)
             print(f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%")
-            
+
             # Store results
             key = f"{dataset_name}_{optimizer_name}"
             results[key] = {
-                'train_loss': train_losses,
-                'val_loss': val_losses,
-                'val_acc': val_accs,
-                'test_loss': test_loss,
-                'test_acc': test_acc,
-                'training_time': training_time
+                "train_loss": train_losses,
+                "val_loss": val_losses,
+                "val_acc": val_accs,
+                "test_loss": test_loss,
+                "test_acc": test_acc,
+                "training_time": training_time,
             }
-    
+
     # Plot results
     plot_results(results, CONFIG.DATASETS, CONFIG.OPTIMIZERS)
-    
+
     # Print summary table
     print("\n===== SUMMARY =====")
     print(f"{'Dataset':<10} {'Optimizer':<10} {'Test Acc':<10} {'Training Time':<15}")
     print("-" * 45)
     for dataset in CONFIG.DATASETS:
-        for optimizer in CONFIG.OPTIMIZERS:
-            key = f"{dataset}_{optimizer}"
+        for opt_name in CONFIG.OPTIMIZERS:
+            key = f"{dataset}_{opt_name}"
             if key in results:
-                test_acc = results[key]['test_acc']
-                training_time = results[key]['training_time']
-                print(f"{dataset:<10} {optimizer:<10} {test_acc:<10.2f} {training_time:<15.2f}")
+                test_acc = float(results[key]["test_acc"])
+                training_time = float(results[key]["training_time"])
+                print(f"{dataset:<10} {opt_name:<10} {test_acc:<10.2f} {training_time:<15.2f}")
+
+
+if __name__ == "__main__":  # pragma: no cover
+    main()
