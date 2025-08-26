@@ -11,21 +11,11 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from psd_optimizer import PSDOptimizer
-
-# Set random seeds for reproducibility
-torch.manual_seed(42)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-np.random.seed(42)
+from utils import get_device, set_seed
 
 # Configuration
 class CONFIG:
-    if torch.cuda.is_available():
-        DEVICE = torch.device("cuda")
-    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-        DEVICE = torch.device("mps")
-    else:
-        DEVICE = torch.device("cpu")
+    DEVICE = get_device()
     RANDOM_SEED = 42
     DATASETS = ["MNIST", "CIFAR10"]
     OPTIMIZERS = ["SGD", "Adam", "PSD"]
@@ -41,6 +31,8 @@ class CONFIG:
     DATA_DIR = "./data"
     NUM_WORKERS = 0 if platform.system() == "Darwin" else 2
 
+# Set random seed once configuration is established
+set_seed(CONFIG.RANDOM_SEED)
 # Data Loading Function
 def get_dataloaders(
     dataset_name: str, batch_size: int
@@ -163,6 +155,9 @@ def train_one_epoch(
     device: torch.device,
 ) -> float:
     """Train the model for one epoch."""
+    if len(dataloader) == 0:
+        raise ValueError("dataloader is empty")
+
     model.train()
     running_loss = 0.0
     total_samples = 0
@@ -290,6 +285,38 @@ def plot_results(results, datasets, optimizers, show: bool = False):
     else:
         plt.close(fig)
 
+
+def create_optimizer(optimizer_name: str, params) -> optim.Optimizer:
+    """Create an optimizer based on its name.
+
+    Args:
+        optimizer_name: Name of the optimizer (e.g., 'SGD', 'Adam', 'PSD').
+        params: Parameters of the model to optimize.
+
+    Returns:
+        A configured optimizer instance.
+
+    Raises:
+        ValueError: If an unsupported optimizer name is provided.
+    """
+    if optimizer_name == "SGD":
+        return optim.SGD(
+            params,
+            lr=CONFIG.LEARNING_RATE_SGD,
+            momentum=CONFIG.MOMENTUM_SGD,
+        )
+    if optimizer_name == "Adam":
+        return optim.Adam(params, lr=CONFIG.LEARNING_RATE_ADAM)
+    if optimizer_name == "PSD":
+        return PSDOptimizer(
+            params,
+            lr=CONFIG.LEARNING_RATE_PSD,
+            epsilon=CONFIG.PSD_GRAD_THRESHOLD,
+            r=CONFIG.PSD_PERTURBATION_RADIUS,
+            T=CONFIG.PSD_T,
+        )
+    raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+
 def main() -> None:  # pragma: no cover
     """Run the full training experiment."""
     # Initialize results dictionary
@@ -315,26 +342,7 @@ def main() -> None:  # pragma: no cover
             model = SimpleCNN(num_classes, input_channels).to(CONFIG.DEVICE)
             criterion = nn.CrossEntropyLoss()
 
-            optimizer: optim.Optimizer
-            if optimizer_name == "SGD":
-                optimizer = optim.SGD(
-                    model.parameters(),
-                    lr=CONFIG.LEARNING_RATE_SGD,
-                    momentum=CONFIG.MOMENTUM_SGD,
-                )
-            elif optimizer_name == "Adam":
-                optimizer = optim.Adam(
-                    model.parameters(),
-                    lr=CONFIG.LEARNING_RATE_ADAM,
-                )
-            elif optimizer_name == "PSD":
-                optimizer = PSDOptimizer(
-                    model.parameters(),
-                    lr=CONFIG.LEARNING_RATE_PSD,
-                    epsilon=CONFIG.PSD_GRAD_THRESHOLD,
-                    r=CONFIG.PSD_PERTURBATION_RADIUS,
-                    T=CONFIG.PSD_T,
-                )
+            optimizer = create_optimizer(optimizer_name, model.parameters())
 
             # Initialize lists to track metrics
             train_losses: List[float] = []

@@ -9,6 +9,7 @@ This repository contains a PyTorch implementation for comparing three optimizati
 - Comprehensive comparison of optimization algorithms
 - Visualization of training dynamics and performance metrics
 - macOS-friendly defaults including support for Apple's Metal (MPS) backend and single-process data loading
+- Helper functions for reproducible experiments and device selection
 
 ## Requirements
 
@@ -41,6 +42,14 @@ This will:
 2. Use three different optimizers (SGD, Adam, PSD)
 3. Generate comparison plots of training metrics
 4. Save results to optimizer_comparison.png
+
+## Utility Functions
+
+The project includes small utility helpers to make experiments more reliable:
+
+- `set_seed(seed)` – configure random seeds across libraries for reproducibility.
+- `get_device()` – automatically choose between CUDA, Apple's MPS, or CPU.
+- `create_optimizer(name, params)` – build a configured optimizer and validate its name.
 
 ## Results
 

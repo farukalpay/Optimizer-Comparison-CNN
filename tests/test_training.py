@@ -25,6 +25,18 @@ def test_train_one_epoch_updates_parameters():
     assert any(not torch.equal(a, b) for a, b in zip(params_before, params_after))
 
 
+def test_train_one_epoch_empty_dataloader_raises():
+    model = SimpleCNN(num_classes=10, input_channels=1)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    empty_loader = DataLoader(
+        TensorDataset(torch.empty(0, 1, 28, 28), torch.empty(0, dtype=torch.long)),
+        batch_size=1,
+    )
+    with pytest.raises(ValueError):
+        train_one_epoch(model, empty_loader, optimizer, criterion, torch.device("cpu"))
+
+
 class ConstantModel(nn.Module):
     def __init__(self, label: int = 0):
         super().__init__()
