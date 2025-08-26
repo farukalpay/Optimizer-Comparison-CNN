@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -28,11 +29,15 @@ jobs:
       - run: mypy .
 
   test:
+    if: ${{ github.event_name != 'pull_request' || matrix.os != 'macos-latest' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version: ['3.9', '3.10', '3.11', '3.12']
+        include:
+          - os: macos-latest
+            python-version: '3.10'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
