@@ -8,6 +8,7 @@ This repository contains a PyTorch implementation for comparing three optimizati
 - Training and evaluation of CNN on MNIST and CIFAR-10 datasets
 - Comprehensive comparison of optimization algorithms
 - Visualization of training dynamics and performance metrics
+- macOS-friendly defaults including support for Apple's Metal (MPS) backend and single-process data loading
 
 ## Requirements
 
