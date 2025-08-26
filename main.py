@@ -1,13 +1,15 @@
+import platform
+import time
+from typing import Any, Dict, List, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-from typing import Any, Dict, List, Tuple
 from psd_optimizer import PSDOptimizer
 
 # Set random seeds for reproducibility
@@ -18,7 +20,12 @@ np.random.seed(42)
 
 # Configuration
 class CONFIG:
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        DEVICE = torch.device("cuda")
+    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        DEVICE = torch.device("mps")
+    else:
+        DEVICE = torch.device("cpu")
     RANDOM_SEED = 42
     DATASETS = ["MNIST", "CIFAR10"]
     OPTIMIZERS = ["SGD", "Adam", "PSD"]
@@ -32,6 +39,7 @@ class CONFIG:
     PSD_PERTURBATION_RADIUS = 1e-4  # Radius of the perturbation noise
     PSD_T = 10  # Number of steps after perturbation
     DATA_DIR = "./data"
+    NUM_WORKERS = 0 if platform.system() == "Darwin" else 2
 
 # Data Loading Function
 def get_dataloaders(
@@ -100,13 +108,13 @@ def get_dataloaders(
     
     # Create data loaders
     train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=batch_size, shuffle=True, num_workers=2
+        train_set, batch_size=batch_size, shuffle=True, num_workers=CONFIG.NUM_WORKERS
     )
     validation_loader = torch.utils.data.DataLoader(
-        val_set, batch_size=batch_size, shuffle=False, num_workers=2
+        val_set, batch_size=batch_size, shuffle=False, num_workers=CONFIG.NUM_WORKERS
     )
     test_loader = torch.utils.data.DataLoader(
-        test_set, batch_size=batch_size, shuffle=False, num_workers=2
+        test_set, batch_size=batch_size, shuffle=False, num_workers=CONFIG.NUM_WORKERS
     )
     
     return train_loader, validation_loader, test_loader
