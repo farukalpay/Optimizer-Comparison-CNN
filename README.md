@@ -63,7 +63,7 @@ The script generates comparative plots showing:
 
 This project uses the `psd-optimizer` package, which implements the Perturbed Saddle Descent (PSD) algorithm. The algorithm is described in:
 
-- Jin et al., 2017, "How to Escape Saddle Points Efficiently"
+- Alpay and Alakkad, 2025, "Escaping Saddle Points via Curvature-Calibrated Perturbations: A Complete Analysis with Explicit Constants and Empirical Validation" ([arXiv:2508.16540](https://arxiv.org/abs/2508.16540))
 - GitHub: https://github.com/farukalpay/PSD
 
 ## License
