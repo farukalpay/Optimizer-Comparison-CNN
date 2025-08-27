@@ -1,0 +1,6 @@
+cff-version: 1.2.0
+title: Optimizer Comparison CNN
+message: Please cite this project if you use it.
+authors:
+  - name: Optimizer Comparison Contributors
+license: MIT
