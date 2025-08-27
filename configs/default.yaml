@@ -1,0 +1,7 @@
+dataset: mnist
+optimizers: [sgd, adam, psd]
+epochs: 1
+batch_size: 128
+lr: 0.01
+out_dir: runs
+seed: 0
